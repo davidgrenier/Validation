@@ -30,7 +30,7 @@ module Result =
             match result, results with
             | S x, S xs -> S (x :: xs)
             | S _, F (e, es) | F (e, es), S _ -> F (e, es)
-            | F (x, xs), F (o, os) -> F (x, xs @ o :: os)
+            | F (x, xs), F (e, es) -> F (x, xs @ e :: es)
         )
 
     let bind f = function
@@ -43,6 +43,10 @@ module Result =
     let isnt predicate error = bind (Validate.isnt predicate error)
     let ensure predicate error = bind (Validate.ensure predicate error)
     let prevent predicate error = bind (Validate.prevent predicate error)
+
+module Aliased =
+    module V = Validate
+    module R = Result
 
 [<AutoOpen>]
 module TopLevel =

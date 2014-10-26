@@ -40,7 +40,6 @@
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
-    <Compile Include="Pervasives.fs" />
     <Compile Include="Validation.fs" />
     <None Include="Test.fsx" />
   </ItemGroup>
