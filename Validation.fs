@@ -2,40 +2,40 @@
 
 type Result<'a, 'b> =
     private
-    | S of 'a
-    | F of 'b * 'b list
+    | Success of 'a
+    | Failure of 'b list
 
 module Validate =
-    let Is predicate error value = if predicate value then S value else F (error, [])
-    let ensure predicate error value = if predicate value then S () else F (error, [])
+    let Is predicate error = function
+        | value when predicate value -> Success value
+        | _ -> Failure [error]
+
+    let ensure predicate error = function
+        | value when predicate value -> Success ()
+        | _ -> Failure [error]
 
     let isnt predicate = Is (predicate >> not)
     let prevent predicate = ensure (predicate >> not)
 
 module Result =
-    let succeed value = S value
-    let fail error = F (error, [])
+    let succeed value = Success value
+    let fail error = Failure [error]
 
-    let map f = function
-        | S x -> succeed (f x)
-        | F (error, rest) -> F (error, rest)
+    let unwrap s f = function
+        | Success x -> s x
+        | Failure x -> f x
 
-    let mapError f = function
-        | S x -> succeed x
-        | F (error, rest) -> F (f error, List.map f rest)
+    let map s f = unwrap (s >> succeed) (List.map f >> Failure)
+    let bind f = unwrap f Failure
 
     let concat results =
-        (Seq.toArray results, S [])
+        (Seq.toArray results, Success [])
         ||> Array.foldBack (fun result results ->
             match result, results with
-            | S x, S xs -> S (x :: xs)
-            | S _, F (e, es) | F (e, es), S _ -> F (e, es)
-            | F (x, xs), F (e, es) -> F (x, xs @ e :: es)
+            | Success x, Success xs -> Success (x :: xs)
+            | Success _, Failure errors | Failure errors, Success _ -> Failure errors
+            | Failure xs, Failure es -> Failure (xs @ es)
         )
-
-    let bind f = function
-        | S x -> f x
-        | F (error, rest) -> F (error, rest)
 
     let private (=>) predicate f error = bind (f predicate error)
 
@@ -44,6 +44,12 @@ module Result =
     let ensure predicate error = bind (Validate.ensure predicate error)
     let prevent predicate error = bind (Validate.prevent predicate error)
 
+module Success =
+    let map f = Result.map f id
+
+module Failure =
+    let map f = Result.map id f
+
 module Aliased =
     module V = Validate
     module R = Result
@@ -51,10 +57,9 @@ module Aliased =
 [<AutoOpen>]
 module TopLevel =
     let (|Success|Failure|) = function
-        | S a -> Success a
-        | F (err, rest) -> Failure (err :: rest)
+        | Success a -> Success a
+        | Failure errors -> Failure errors
     
-    let (>>=) result f = Result.bind f result
     let equalTo = (=)
     let True x : bool = x
     let False = not
@@ -62,8 +67,8 @@ module TopLevel =
     let inline One x = x = LanguagePrimitives.GenericOne
 
     type ResultBuilder internal () =
-        member __.Return value = S value
-        member __.ReturnFrom result = result
-        member __.Bind(result, f) = result >>= f
+        member __.Return value = Result.succeed value
+        member __.ReturnFrom (result: Result<_,_>) = result
+        member __.Bind (result, f) = Result.bind f result
 
     let result = ResultBuilder()
