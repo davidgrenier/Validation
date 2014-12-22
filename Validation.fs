@@ -35,18 +35,15 @@ module Validate =
         
 [<ReflectedDefinition>]
 module Result =
-    let succeed value = Success value
-    let fail error = Failure error
-
     let unwrap (s: 'a -> 'c) (f: 'b -> 'c) result =
         match result with
         | Success x -> s x
         | Failure x -> f x
 
     let recover (f: 'b -> 'a) = unwrap id f
-    let tryRecover (f: 'b -> Result<'a, 'c>) = unwrap succeed f
+    let tryRecover (f: 'b -> Result<'a, 'c>) = unwrap Success f
 
-    let map s f = unwrap (s >> succeed) (f >> Failure)
+    let map s f = unwrap (s >> Success) (f >> Failure)
     let bind f = unwrap f Failure
 
     let concat results =
@@ -69,8 +66,8 @@ module Result =
 
     let ofOption error value =
         match value with
-        | None -> fail error
-        | Some x -> succeed x
+        | None -> Failure error
+        | Some x -> Success x
 
     let get result = unwrap id failwith
 
@@ -80,13 +77,18 @@ module Result =
 [<ReflectedDefinition>]
 module Success =
     let map f = Result.map f id
+    let create = Success
     
 [<ReflectedDefinition>]
 module Failure =
     let map f = Result.map id f
+    let create = Failure
 
 [<AutoOpen; ReflectedDefinition>]
 module TopLevel =
+    let succeed value = Success value
+    let fail error = Failure error
+
     let (|Success|Failure|) result =
         match result with
         | Success x -> Success x
@@ -99,11 +101,11 @@ module TopLevel =
     let inline One x = x = LanguagePrimitives.GenericOne
     let empty = Seq.isEmpty
     let tryCatch f arg =
-        try f arg |> Success
-        with ex -> Failure ex
+        try f arg |> succeed
+        with ex -> fail (ex.Message, ex)
 
     type ResultBuilder internal () =
-        member __.Return value = Result.succeed value
+        member __.Return value = succeed value
         member __.ReturnFrom (result: Result<_,_>) = result
         member __.Bind (result, f) = Result.bind f result
         member __.Bind (result, f) = Result.bind (f >> Failure.map (fun x -> [x])) result
@@ -111,7 +113,7 @@ module TopLevel =
     type ReaderBuilder internal () =
         member x.ReturnFrom (reader: _ -> Result<_, _>) = reader
         member x.ReturnFrom (result: Result<_, _>) = fun _ -> result
-        member x.Return v = fun _ -> Result.succeed v
+        member x.Return v = fun _ -> succeed v
         member x.Bind (result: Result<_, _>, f) = x.Bind((fun _ -> result), f)
         member x.Bind (reader: 'context -> Result<'a, 'b>, f: 'a -> 'context -> Result<'c, 'b>) =
             fun context ->
