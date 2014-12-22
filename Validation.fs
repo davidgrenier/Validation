@@ -5,6 +5,7 @@ type Result<'a, 'b> =
     | Success of 'a
     | Failure of 'b
 
+[<ReflectedDefinition>]
 module Validate =
     let Is predicate error value =
         if predicate value then Success value
@@ -31,7 +32,8 @@ module Validate =
         match xs with
         | [] -> Success x
         | _ -> Failure error
-
+        
+[<ReflectedDefinition>]
 module Result =
     let succeed value = Success value
     let fail error = Failure error
@@ -42,6 +44,7 @@ module Result =
         | Failure x -> f x
 
     let recover (f: 'b -> 'a) = unwrap id f
+    let tryRecover (f: 'b -> Result<'a, 'c>) = unwrap succeed f
 
     let map s f = unwrap (s >> succeed) (f >> Failure)
     let bind f = unwrap f Failure
@@ -71,17 +74,23 @@ module Result =
 
     let get result = unwrap id failwith
 
+    let isSuccess result = unwrap (fun _ -> true) (fun _ -> false) result
+    let isFailure result = not (isSuccess result)
+    
+[<ReflectedDefinition>]
 module Success =
     let map f = Result.map f id
-
+    
+[<ReflectedDefinition>]
 module Failure =
     let map f = Result.map id f
 
-[<AutoOpen>]
+[<AutoOpen; ReflectedDefinition>]
 module TopLevel =
-    let (|Success|Failure|) = function
-        | Success a -> Success a
-        | Failure errors -> Failure errors
+    let (|Success|Failure|) result =
+        match result with
+        | Success x -> Success x
+        | Failure x -> Failure x
     
     let inline equalTo x y = x = y
     let True x : bool = x
@@ -89,6 +98,9 @@ module TopLevel =
     let inline Zero x = x = LanguagePrimitives.GenericZero
     let inline One x = x = LanguagePrimitives.GenericOne
     let empty = Seq.isEmpty
+    let tryCatch f arg =
+        try f arg |> Success
+        with ex -> Failure ex
 
     type ResultBuilder internal () =
         member __.Return value = Result.succeed value
@@ -96,4 +108,15 @@ module TopLevel =
         member __.Bind (result, f) = Result.bind f result
         member __.Bind (result, f) = Result.bind (f >> Failure.map (fun x -> [x])) result
 
+    type ReaderBuilder internal () =
+        member x.ReturnFrom (reader: _ -> Result<_, _>) = reader
+        member x.ReturnFrom (result: Result<_, _>) = fun _ -> result
+        member x.Return v = fun _ -> Result.succeed v
+        member x.Bind (result: Result<_, _>, f) = x.Bind((fun _ -> result), f)
+        member x.Bind (reader: 'context -> Result<'a, 'b>, f: 'a -> 'context -> Result<'c, 'b>) =
+            fun context ->
+                reader context
+                |> Result.bind (fun s -> f s context)
+
     let result = ResultBuilder()
+    let reader = ReaderBuilder()

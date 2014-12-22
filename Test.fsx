@@ -1,7 +1,5 @@
 ﻿#r @"bin\Validation.dll"
 
-open Validation
-
 let q : Result<string, _> =
     result {
         let! x =
