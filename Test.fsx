@@ -7,3 +7,7 @@ let q : Result<string, _> =
             |> Result.concat
         return! fail "test"
     }
+
+let d : Choice<int,_> =
+    Validate.parse "33"
+    |> (|Success|Failure|)

@@ -35,9 +35,12 @@ module Validate =
         | _ -> Failure error
 
     let matches pattern error input =
-        match System.Text.RegularExpressions.Regex.Match(input, pattern) with
-        | m when m.Success -> Success m.Value
-        | _ -> Failure error
+        match input with
+        | null -> Failure error
+        | _ ->
+            match System.Text.RegularExpressions.Regex.Match(input, pattern) with
+            | m when m.Success -> Success m.Value
+            | _ -> Failure error
         
 [<ReflectedDefinition>]
 module Result =
@@ -117,10 +120,6 @@ module TopLevel =
         member __.ReturnFrom (result: Result<_,_>) = result
         member __.Bind (result, f) = Result.bind f result
         member __.Bind (result, f) = Result.bind (f >> Failure.map (fun x -> [x])) result
-        member __.Bind (result, f) =
-            result
-            |> Failure.map (fun x -> [x])
-            |> Result.bind f
 
     type ReaderBuilder internal () =
         member x.ReturnFrom (reader: _ -> Result<_, _>) = reader
