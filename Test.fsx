@@ -3,7 +3,7 @@
 let q : Result<string, _> =
     result {
         let! x =
-            [Result.fail "test"; Result.fail "toto"]
+            [fail "test"; fail "toto"]
             |> Result.concat
-        return! Result.fail "test"
+        return! fail "test"
     }

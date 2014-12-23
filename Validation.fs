@@ -11,12 +11,13 @@ module Validate =
         if predicate value then Success value
         else Failure error
 
+    let isnt predicate error value = Is (predicate >> not) error value
+
     let ensure predicate error value =
         if predicate value then Success ()
         else Failure error
 
-    let isnt predicate = Is (predicate >> not)
-    let prevent predicate = ensure (predicate >> not)
+    let prevent predicate error value = ensure (predicate >> not) error value
 
     let notEmpty (error: 'b) list =
         match list with
@@ -32,6 +33,11 @@ module Validate =
         match xs with
         | [] -> Success x
         | _ -> Failure error
+
+    let matches pattern error input =
+        match System.Text.RegularExpressions.Regex.Match(input, pattern) with
+        | m when m.Success -> Success m.Value
+        | _ -> Failure error
         
 [<ReflectedDefinition>]
 module Result =
@@ -40,11 +46,11 @@ module Result =
         | Success x -> s x
         | Failure x -> f x
 
-    let recover (f: 'b -> 'a) = unwrap id f
-    let tryRecover (f: 'b -> Result<'a, 'c>) = unwrap Success f
+    let recover (f: 'b -> 'a) result = unwrap id f result
+    let tryRecover (f: 'b -> Result<'a, 'c>) result = unwrap Success f result
 
-    let map s f = unwrap (s >> Success) (f >> Failure)
-    let bind f = unwrap f Failure
+    let map s f result = unwrap (s >> Success) (f >> Failure) result
+    let bind f result = unwrap f Failure result
 
     let concat results =
         (Seq.toArray results, Success [])
@@ -56,33 +62,35 @@ module Result =
             | Failure error, Failure errors -> Failure (error :: errors)
         )
 
-    let filter predicate error = bind (Validate.Is predicate error)
-    let isnt predicate error = bind (Validate.isnt predicate error)
-    let ensure predicate error = bind (Validate.ensure predicate error)
-    let prevent predicate error = bind (Validate.prevent predicate error)
-    let notEmpty error = bind (Validate.notEmpty error)
-    let single error = bind (Validate.single error)
-    let singleton error = bind (Validate.singleton error)
-
     let ofOption error value =
         match value with
         | None -> Failure error
         | Some x -> Success x
 
-    let get result = unwrap id failwith
+    let toOption result = unwrap Some (fun _ -> None) result
+
+    let get result = unwrap id failwith result
 
     let isSuccess result = unwrap (fun _ -> true) (fun _ -> false) result
     let isFailure result = not (isSuccess result)
+
+    let filter predicate error result = bind (Validate.Is predicate error) result
+    let isnt predicate error result = bind (Validate.isnt predicate error) result
+    let ensure predicate error result = bind (Validate.ensure predicate error) result
+    let prevent predicate error result = bind (Validate.prevent predicate error) result
+    let notEmpty error result = bind (Validate.notEmpty error) result
+    let single error result = bind (Validate.single error) result
+    let singleton error result = bind (Validate.singleton error) result
+    let matches pattern error result = bind (Validate.matches pattern error) result
     
 [<ReflectedDefinition>]
 module Success =
     let map f = Result.map f id
-    let create = Success
+    let ignore result = map ignore result
     
 [<ReflectedDefinition>]
 module Failure =
     let map f = Result.map id f
-    let create = Failure
 
 [<AutoOpen; ReflectedDefinition>]
 module TopLevel =
@@ -109,6 +117,10 @@ module TopLevel =
         member __.ReturnFrom (result: Result<_,_>) = result
         member __.Bind (result, f) = Result.bind f result
         member __.Bind (result, f) = Result.bind (f >> Failure.map (fun x -> [x])) result
+        member __.Bind (result, f) =
+            result
+            |> Failure.map (fun x -> [x])
+            |> Result.bind f
 
     type ReaderBuilder internal () =
         member x.ReturnFrom (reader: _ -> Result<_, _>) = reader
