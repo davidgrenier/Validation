@@ -29,7 +29,7 @@ module Validate =
         | [x] -> Success x
         | _ -> Failure error
 
-    let singleton (error: 'b) (x, xs) =
+    let singleton error (x, xs: 'a list) : Result<'a, 'b> =
         match xs with
         | [] -> Success x
         | _ -> Failure error
@@ -41,6 +41,8 @@ module Validate =
             match System.Text.RegularExpressions.Regex.Match(input, pattern) with
             | m when m.Success -> Success m.Value
             | _ -> Failure error
+
+    let all predicate error xs = Seq.forall predicate xs |> ensure id error
         
 [<ReflectedDefinition>]
 module Result =
@@ -56,14 +58,14 @@ module Result =
     let bind f result = unwrap f Failure result
 
     let concat results =
-        (Seq.toArray results, Success [])
-        ||> Array.foldBack (fun result results ->
+        Seq.toArray results
+        |> Array.foldBack (fun result results ->
             match result, results with
             | Success x, Success xs -> Success (x :: xs)
             | Success _, Failure errors -> Failure errors
             | Failure error, Success _ -> Failure [error]
             | Failure error, Failure errors -> Failure (error :: errors)
-        )
+        ) <| Success []
 
     let ofOption error value =
         match value with
@@ -77,23 +79,26 @@ module Result =
     let isSuccess result = unwrap (fun _ -> true) (fun _ -> false) result
     let isFailure result = not (isSuccess result)
 
-    let filter predicate error result = bind (Validate.Is predicate error) result
-    let isnt predicate error result = bind (Validate.isnt predicate error) result
-    let ensure predicate error result = bind (Validate.ensure predicate error) result
-    let prevent predicate error result = bind (Validate.prevent predicate error) result
-    let notEmpty error result = bind (Validate.notEmpty error) result
-    let single error result = bind (Validate.single error) result
-    let singleton error result = bind (Validate.singleton error) result
-    let matches pattern error result = bind (Validate.matches pattern error) result
+    open Validate
+
+    let filter predicate error result = bind (Is predicate error) result
+    let isnt predicate error result = bind (isnt predicate error) result
+    let ensure predicate error result = bind (ensure predicate error) result
+    let prevent predicate error result = bind (prevent predicate error) result
+    let notEmpty error result = bind (notEmpty error) result
+    let single error result = bind (single error) result
+    let singleton error result = bind (singleton error) result
+    let matches pattern error result = bind (matches pattern error) result
+    let all predicate error xs = bind (all predicate error) xs
     
 [<ReflectedDefinition>]
 module Success =
-    let map f = Result.map f id
+    let map f result = Result.map f id result
     let ignore result = map ignore result
     
 [<ReflectedDefinition>]
 module Failure =
-    let map f = Result.map id f
+    let map f result = Result.map id f result
 
 [<AutoOpen; ReflectedDefinition>]
 module TopLevel =
@@ -106,30 +111,29 @@ module TopLevel =
         | Failure x -> Failure x
     
     let inline equalTo x y = x = y
-    let True x : bool = x
-    let False = not
+    let inline True x : bool = x
+    let inline False x = not x
     let inline Zero x = x = LanguagePrimitives.GenericZero
     let inline One x = x = LanguagePrimitives.GenericOne
-    let empty = Seq.isEmpty
-    let tryCatch f arg =
+    let inline negative x = x < LanguagePrimitives.GenericZero
+    let inline empty xs = Seq.isEmpty xs
+    let inline tryCatch f arg =
         try f arg |> succeed
         with ex -> fail (ex.Message, ex)
 
     type ResultBuilder internal () =
         member __.Return value = succeed value
-        member __.ReturnFrom (result: Result<_,_>) = result
+        member __.ReturnFrom result : Result<'a,'b> = result
         member __.Bind (result, f) = Result.bind f result
         member __.Bind (result, f) = Result.bind (f >> Failure.map (fun x -> [x])) result
 
     type ReaderBuilder internal () =
-        member x.ReturnFrom (reader: _ -> Result<_, _>) = reader
-        member x.ReturnFrom (result: Result<_, _>) = fun _ -> result
-        member x.Return v = fun _ -> succeed v
+        member __.ReturnFrom reader : 'context -> Result<'a, 'b> = reader
+        member x.ReturnFrom result : 'context -> Result<'a, 'b> = fun _ -> result
+        member __.Return v : 'context -> _ = fun _ -> succeed v
+        member __.Bind (reader, f: 'a -> _) : 'context -> Result<'c, 'b> =
+            fun context -> reader context |> Result.bind (fun s -> f s context)
         member x.Bind (result: Result<_, _>, f) = x.Bind((fun _ -> result), f)
-        member x.Bind (reader: 'context -> Result<'a, 'b>, f: 'a -> 'context -> Result<'c, 'b>) =
-            fun context ->
-                reader context
-                |> Result.bind (fun s -> f s context)
 
     let result = ResultBuilder()
     let reader = ReaderBuilder()
