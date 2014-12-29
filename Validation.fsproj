@@ -42,7 +42,7 @@
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <Compile Include="Validation.fs" />
-    <Compile Include="Validate.fs" />
+    <Compile Include="ServerSide.fs" />
     <Compile Include="AssemblyInfo.fs" />
     <None Include="Test.fsx" />
   </ItemGroup>
