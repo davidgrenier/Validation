@@ -99,6 +99,10 @@ module Success =
 [<ReflectedDefinition>]
 module Failure =
     let map f result = Result.map id f result
+    let concatLines (result: Result<unit list, _>) =
+        result
+        |> Success.ignore
+        |> map (String.concat System.Environment.NewLine)
 
 [<AutoOpen; ReflectedDefinition>]
 module TopLevel =
