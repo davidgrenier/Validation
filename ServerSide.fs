@@ -14,3 +14,9 @@ module Validate =
 
 module Result =
     let inline parse result = Result.bind Validate.parse result
+
+module Failure =
+    let concatLines (result: Result<unit list, _>) =
+        result
+        |> Success.ignore
+        |> Failure.map (String.concat System.Environment.NewLine)
