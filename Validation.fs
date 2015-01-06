@@ -125,7 +125,6 @@ module TopLevel =
         member __.Return value = succeed value
         member __.ReturnFrom result : Result<'a,'b> = result
         member __.Bind (result, f) = Result.bind f result
-        member __.Bind (result, f) = Result.bind (f >> Failure.map (fun x -> [x])) result
 
     type ReaderBuilder internal () =
         member __.ReturnFrom reader : 'context -> Result<'a, 'b> = reader
