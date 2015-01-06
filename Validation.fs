@@ -66,13 +66,18 @@ module Result =
             | Failure error, Success _ -> Failure [error]
             | Failure error, Failure errors -> Failure (error :: errors)
         ) <| Success []
-
+        
+    let toOption result = unwrap Some (fun _ -> None) result
     let ofOption error value =
         match value with
         | None -> Failure error
         | Some x -> Success x
 
-    let toOption result = unwrap Some (fun _ -> None) result
+    let toChoice result = unwrap Choice1Of2 Choice2Of2 result
+    let ofChoice choice =
+        match choice with
+        | Choice1Of2 x -> Success x
+        | Choice2Of2 x -> Failure x
 
     let get result = unwrap id failwith result
 
