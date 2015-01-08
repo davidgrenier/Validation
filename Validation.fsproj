@@ -13,6 +13,7 @@
     <TargetFSharpCoreVersion>4.3.1.0</TargetFSharpCoreVersion>
     <Name>Validation</Name>
     <TargetFrameworkProfile />
+    <NuGetPackageImportStamp>ed16b965</NuGetPackageImportStamp>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -40,11 +41,19 @@
     </Otherwise>
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
+  <Import Project="packages\WebSharper.2.5.134.72\build\WebSharper.targets" Condition="Exists('packages\WebSharper.2.5.134.72\build\WebSharper.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('packages\WebSharper.2.5.134.72\build\WebSharper.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\WebSharper.2.5.134.72\build\WebSharper.targets'))" />
+  </Target>
   <ItemGroup>
     <Compile Include="Validation.fs" />
     <Compile Include="ServerSide.fs" />
     <Compile Include="AssemblyInfo.fs" />
     <None Include="Test.fsx" />
+    <Content Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />

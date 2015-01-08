@@ -34,14 +34,6 @@ module Validate =
         | [] -> Success x
         | _ -> Failure error
 
-    let matches pattern error input =
-        match input with
-        | null -> Failure error
-        | _ ->
-            match System.Text.RegularExpressions.Regex.Match(input, pattern) with
-            | m when m.Success -> Success m.Value
-            | _ -> Failure error
-
     let all predicate error xs = Seq.forall predicate xs |> ensure id error
         
 [<ReflectedDefinition>]
@@ -93,7 +85,6 @@ module Result =
     let notEmpty error result = bind (notEmpty error) result
     let single error result = bind (single error) result
     let singleton error result = bind (singleton error) result
-    let matches pattern error result = bind (matches pattern error) result
     let all predicate error xs = bind (all predicate error) xs
     
 [<ReflectedDefinition>]
@@ -118,9 +109,6 @@ module TopLevel =
     let inline equalTo x y = x = y
     let inline True x : bool = x
     let inline False x = not x
-    let inline Zero x = x = LanguagePrimitives.GenericZero
-    let inline One x = x = LanguagePrimitives.GenericOne
-    let inline negative x = x < LanguagePrimitives.GenericZero
     let inline empty xs = Seq.isEmpty xs
     let inline tryCatch f arg =
         try f arg |> succeed
