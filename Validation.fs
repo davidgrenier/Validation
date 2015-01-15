@@ -95,6 +95,7 @@ module Success =
 [<ReflectedDefinition>]
 module Failure =
     let map f result = Result.map id f result
+    let concat (results: seq<Result<unit, 'b>>) = Result.concat results |> Success.ignore
 
 [<AutoOpen; ReflectedDefinition>]
 module TopLevel =
