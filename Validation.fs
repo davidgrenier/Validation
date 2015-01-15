@@ -5,6 +5,14 @@ type Result<'a, 'b> =
     | Success of 'a
     | Failure of 'b
 
+    with
+        override x.ToString() =
+            let prefix, result =
+                match x with
+                | Success x -> "Success", Choice1Of2 x
+                | Failure x -> "Failure", Choice2Of2 x
+            sprintf "%s%s" prefix (sprintf "%A" result).[10..]
+
 [<ReflectedDefinition>]
 module Validate =
     let Is predicate error value =
