@@ -13,7 +13,7 @@
     <TargetFSharpCoreVersion>4.3.0.0</TargetFSharpCoreVersion>
     <Name>Validation</Name>
     <TargetFrameworkProfile />
-    <NuGetPackageImportStamp>ed16b965</NuGetPackageImportStamp>
+    <NuGetPackageImportStamp>92523ad6</NuGetPackageImportStamp>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
