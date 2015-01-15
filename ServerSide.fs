@@ -25,9 +25,8 @@ module Result =
     let matches pattern error result = Result.bind (Validate.matches pattern error) result
 
 module Failure =
-    let concatLines (result: Result<unit list, _>) =
+    let concatLines (result: Result<unit, _>) =
         result
-        |> Success.ignore
         |> Failure.map (String.concat System.Environment.NewLine)
 
 [<AutoOpen>]
