@@ -127,6 +127,19 @@ module TopLevel =
         member __.Return value = succeed value
         member __.ReturnFrom result : Result<'a,'b> = result
         member __.Bind (result, f) = Result.bind f result
+        member __.Delay f = f
+        member __.Combine (result: Result<unit, 'b>, f) = result |> Result.bind f
+        member __.Run (result: unit -> Result<'a, 'b>) = result ()
+        member __.For (values: _ seq, f) =
+            let enum = values.GetEnumerator()
+            try
+                let rec loop () =
+                    match enum.MoveNext() with
+                    | true -> f enum.Current |> Result.bind loop
+                    | false -> succeed ()
+
+                loop ()
+            finally enum.Dispose()
 
     type ReaderBuilder internal () =
         member __.ReturnFrom reader : 'context -> Result<'a, 'b> = reader

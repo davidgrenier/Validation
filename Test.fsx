@@ -1,11 +1,13 @@
 ﻿#r @"bin\Validation.dll"
 
-let q : Result<string, _> =
+let q =
     result {
-        let! x =
-            [fail "test"; fail "toto"]
-            |> Result.concat
-        return! fail "test"
+        for x in [1;2] do
+            do! x |> Validate.ensure (fun x -> x < 2) (sprintf "Oops %d is >= 2" x)
+
+        printfn "test"
+
+        return "test"
     }
 
 let d : Choice<int,_> =
