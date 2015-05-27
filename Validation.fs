@@ -124,6 +124,7 @@ module TopLevel =
         with ex -> fail (ex.Message, ex)
 
     type ResultBuilder internal () =
+        member __.Zero() = succeed ()
         member __.Return value = succeed value
         member __.ReturnFrom result : Result<'a,'b> = result
         member __.Bind (result, f) = Result.bind f result

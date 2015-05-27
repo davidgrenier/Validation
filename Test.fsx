@@ -13,3 +13,10 @@ let q =
 let d : Choice<int,_> =
     Validate.parse "33"
     |> (|Success|Failure|)
+
+let zero: Result<_, string> =
+    result {
+        if true then
+            do! fail "test"
+        return "test"
+    }
