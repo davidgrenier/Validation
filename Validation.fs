@@ -142,13 +142,4 @@ module TopLevel =
                 loop ()
             finally enum.Dispose()
 
-    type ReaderBuilder internal () =
-        member __.ReturnFrom reader : 'context -> Result<'a, 'b> = reader
-        member x.ReturnFrom result : 'context -> Result<'a, 'b> = fun _ -> result
-        member __.Return v : 'context -> _ = fun _ -> succeed v
-        member __.Bind (reader, f: 'a -> _) : 'context -> Result<'c, 'b> =
-            fun context -> reader context |> Result.bind (fun s -> f s context)
-        member x.Bind (result: Result<_, _>, f) = x.Bind((fun _ -> result), f)
-
     let result = ResultBuilder()
-    let reader = ReaderBuilder()
